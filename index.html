@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vehicle Mileage Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-main: #0F172A;
+    --bg-surface: #1E293B;
+    --bg-card: #334155;
+    --border-color: #475569;
+    --text-primary: #F8FAFC;
+    --text-muted: #94A3B8;
+    --accent: #3B82F6;
+    --accent-hover: #2563EB;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --purple: #8B5CF6;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  body.light-theme {
+    --bg-main: #F1F5F9;
+    --bg-surface: #FFFFFF;
+    --bg-card: #F8FAFC;
+    --border-color: #CBD5E1;
+    --text-primary: #0F172A;
+    --text-muted: #64748B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-family);
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    overflow-x: hidden;
+  }
+  /* Layout */
+  #sidebar {
+    width: 260px;
+    background-color: var(--bg-surface);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    z-index: 100;
+  }
+  #sidebar .logo-area {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  #sidebar .logo-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--success));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .nav-menu { list-style: none; padding: 16px 12px; flex: 1; overflow-y: auto; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; margin-bottom: 6px;
+    border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: 500;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+  }
+  .nav-item:hover, .nav-item.active {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+  }
+  .nav-item.active { border-left: 4px solid var(--accent); }
+  .nav-item .icon { font-size: 18px; }
+
+  #main-content {
+    margin-left: 260px;
+    flex: 1;
+    padding: 24px;
+    max-width: 1300px;
+    padding-bottom: 80px;
+  }
+  @media (max-width: 768px) {
+    #sidebar { display: none; }
+    #main-content { margin-left: 0; padding: 16px; padding-bottom: 90px; width: 100%; }
+    #bottom-nav {
+      display: flex !important;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-color);
+      justify-content: space-around;
+      padding: 8px 0;
+      z-index: 100;
+    }
+  }
+  #bottom-nav { display: none; }
+  .b-nav-item {
+    display: flex; flex-direction: column; align-items: center;
+    font-size: 11px; color: var(--text-muted); cursor: pointer; gap: 3px;
+  }
+  .b-nav-item.active { color: var(--accent); font-weight: 600; }
+  .b-nav-item span.icon { font-size: 20px; }
+
+  /* Top Bar */
+  .top-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+  }
+  .page-title { font-size: 24px; font-weight: 700; }
+  .top-actions { display: flex; align-items: center; gap: 10px; }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); }
+  .btn-secondary:hover { background: var(--bg-card); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* Alerts Banner */
+  .alert-banner {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid var(--danger);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    color: #FCA5A5;
+    font-size: 13.5px;
+    animation: fadeIn 0.3s ease;
+  }
+  .alert-banner.warning {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: var(--warning);
+    color: #FCD34D;
+  }
+  .alert-banner.info {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: var(--accent);
+    color: #93C5FD;
+  }
+
+  /* Grid & Cards */
+  .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 24px; }
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .card:hover { border-color: var(--accent); }
+  .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .stat-value { font-size: 26px; font-weight: 700; color: var(--text-primary); }
+  .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Vehicle Card */
+  .v-card {
+    position: relative;
+    border-left: 6px solid var(--accent);
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .v-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .v-badge {
+    font-size: 11px; padding: 3px 8px; border-radius: 12px; background: var(--bg-card);
+    font-weight: 600; text-transform: uppercase;
+  }
+  .trend-up { color: var(--success); font-weight: bold; }
+  .trend-down { color: var(--danger); font-weight: bold; }
+
+  /* Tables */
+  .table-container {
+    overflow-x: auto; background: var(--bg-surface);
+    border: 1px solid var(--border-color); border-radius: 12px;
+  }
+  table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px; }
+  th, td { padding: 14px 16px; border-bottom: 1px solid var(--border-color); }
+  th { background: var(--bg-card); color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Modals */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    width: 100%; max-width: 520px;
+    max-height: 90vh; overflow-y: auto;
+    padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+    animation: scaleUp 0.2s ease;
+  }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .close-btn { cursor: pointer; font-size: 20px; color: var(--text-muted); background: none; border: none; }
+
+  /* Forms */
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); }
+  .form-control {
+    width: 100%; padding: 10px 12px;
+    background: var(--bg-main); border: 1px solid var(--border-color);
+    border-radius: 8px; color: var(--text-primary); font-size: 14px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .form-control:focus { border-color: var(--accent); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-error { color: var(--danger); font-size: 12px; margin-top: 4px; display: none; }
+  .form-error.visible { display: block; }
+  .preview-calc-box {
+    background: var(--bg-card); border: 1px dashed var(--border-color);
+    border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px;
+    display: flex; justify-content: space-around;
+  }
+
+  /* Tags & Badges */
+  .tag { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-block; }
+  .tag-personal { background: rgba(59, 130, 246, 0.2); color: #60A5FA; }
+  .tag-business { background: rgba(16, 185, 129, 0.2); color: #34D399; }
+  .tag-rental { background: rgba(245, 158, 11, 0.2); color: #FBBF24; }
+  .color-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+
+  /* Toast Notification */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--bg-card); border: 1px solid var(--accent);
+    color: var(--text-primary); padding: 12px 20px; border-radius: 10px;
+    font-size: 14px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+    transform: translateY(100px); opacity: 0; transition: all 0.3s ease;
+    z-index: 2000;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes scaleUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+  /* Print Styles */
+  @media print {
+    #sidebar, #bottom-nav, .top-actions, .btn, .modal-backdrop, #toast, .no-print { display: none !important; }
+    #main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
+    body { background: #fff !important; color: #000 !important; }
+    .card, .table-container { border: 1px solid #ddd !important; box-shadow: none !important; background: #fff !important; color: #000 !important; }
+    th { background: #eee !important; color: #000 !important; }
+    td { color: #000 !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar Navigation -->
+<nav id="sidebar">
+  <div class="logo-area">
+    <div class="logo-icon">⛽</div>
+    <div>
+      <h2 style="font-size: 16px; font-weight: 700;">MileageTracker</h2>
+      <span style="font-size: 11px; color: var(--text-muted);" id="sidebar-v-count">2 Vehicles Active</span>
+    </div>
+  </div>
+  <ul class="nav-menu">
+    <li class="nav-item active" onclick="switchTab('dashboard')"><span class="icon">📊</span> Dashboard</li>
+    <li class="nav-item" onclick="switchTab('vehicles')"><span class="icon">🚗</span> Vehicles</li>
+    <li class="nav-item" onclick="switchTab('fillups')"><span class="icon">⛽</span> Fuel Fill-ups</li>
+    <li class="nav-item" onclick="switchTab('trips')"><span class="icon">📍</span> Trip Log</li>
+    <li class="nav-item" onclick="switchTab('reports')"><span class="icon">📑</span> Expense Reports</li>
+    <li class="nav-item" onclick="switchTab('settings')"><span class="icon">⚙️</span> Settings</li>
+  </ul>
+  <div style="padding: 16px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted);">
+    Offline Storage Active (v1.0)
+  </div>
+</nav>
+
+<!-- Main Area -->
+<main id="main-content">
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div>
+      <h1 class="page-title" id="page-heading">Fleet Dashboard</h1>
+      <p style="font-size: 13px; color: var(--text-muted);" id="page-subheading">Comprehensive overview of fuel usage, mileage, and trips</p>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-secondary btn-sm" onclick="toggleTheme()" title="Toggle Dark/Light Mode" id="theme-btn">🌙 Dark</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-fillup')">+ Log Fill-up</button>
+      <button class="btn btn-secondary btn-sm" onclick="openModal('modal-trip')">+ Log Trip</button>
+    </div>
+  </div>
+
+  <!-- Smart Alerts Area -->
+  <div id="smart-alerts-container"></div>
+
+  <!-- VIEWS CONTAINER -->
+
+  <!-- 1. DASHBOARD VIEW -->
+  <div id="view-dashboard" class="tab-view">
+    <!-- Fleet Summary -->
+    <div class="grid-4">
+      <div class="card">
+        <div class="stat-label">Total Distance</div>
+        <div class="stat-value" id="stat-total-dist">0 km</div>
+        <div class="stat-sub">Across all logged vehicles</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Total Fuel Cost</div>
+        <div class="stat-value" id="stat-total-cost">₹0</div>
+        <div class="stat-sub">Total spent on fuel</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Fleet Avg Mileage</div>
+        <div class="stat-value" id="stat-avg-mileage">0 km/L</div>
+        <div class="stat-sub" id="stat-avg-mileage-sub">Average fuel efficiency</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Avg Cost / Distance</div>
+        <div class="stat-value" id="stat-cost-per-km">₹0 / km</div>
+        <div class="stat-sub">Fuel spend efficiency</div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="font-size: 15px; margin-bottom: 12px;">📈 Mileage Trend (Last 10 Fill-ups)</h3>
+        <div style="height: 240px; position: relative;">
+          <canvas id="chart-mileage"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="font-size: 15px; margin-bottom: 12px;">📊 Monthly Fuel Spend</h3>
+        <div style="height: 240px; position: relative;">
+          <canvas id="chart-spend"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-Vehicle Cards Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 18px; font-weight: 700;">Vehicles Overview</h3>
+      <button class="btn btn-secondary btn-sm" onclick="openModal('modal-vehicle')">+ Add Vehicle</button>
+    </div>
+    <div class="grid-4" id="dashboard-vehicles-grid"></div>
+  </div>
+
+  <!-- 2. VEHICLES VIEW -->
+  <div id="view-vehicles" class="tab-view" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <p style="font-size: 14px; color: var(--text-muted);">Manage unlimited cars, bikes, trucks, and commercial autos.</p>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-vehicle')">+ Add Vehicle</button>
+    </div>
+    <div class="grid-2" id="all-vehicles-grid"></div>
+  </div>
+
+  <!-- 3. FUEL FILL-UP VIEW -->
+  <div id="view-fillups" class="tab-view" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; gap: 8px;">
+        <select id="fillup-filter-vehicle" class="form-control" style="width: 180px;" onchange="renderFillupTable()">
+          <option value="all">All Vehicles</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-fillup')">+ Log Fill-up</button>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Vehicle</th>
+            <th>Odometer</th>
+            <th>Distance</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Total</th>
+            <th>Mileage</th>
+            <th>Station</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="fillup-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4. TRIPS VIEW -->
+  <div id="view-trips" class="tab-view" style="display: none;">
+    <div class="grid-4" style="margin-bottom: 16px;">
+      <div class="card" style="padding: 14px;">
+        <div class="stat-label">Total Trips Logged</div>
+        <div class="stat-value" style="font-size: 20px;" id="stat-trips-count">0</div>
+      </div>
+      <div class="card" style="padding: 14px;">
+        <div class="stat-label">Business Travel</div>
+        <div class="stat-value" style="font-size: 20px;" id="stat-trips-business">0 km</div>
+      </div>
+      <div class="card" style="padding: 14px;">
+        <div class="stat-label">Personal Travel</div>
+        <div class="stat-value" style="font-size: 20px;" id="stat-trips-personal">0 km</div>
+      </div>
+      <div class="card" style="padding: 14px;">
+        <div class="stat-label">Rental / Other</div>
+        <div class="stat-value" style="font-size: 20px;" id="stat-trips-other">0 km</div>
+      </div>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; gap: 8px;">
+        <select id="trip-filter-vehicle" class="form-control" style="width: 160px;" onchange="renderTripTable()">
+          <option value="all">All Vehicles</option>
+        </select>
+        <select id="trip-filter-purpose" class="form-control" style="width: 140px;" onchange="renderTripTable()">
+          <option value="all">All Purposes</option>
+          <option value="Business">Business</option>
+          <option value="Personal">Personal</option>
+          <option value="Rental">Rental</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-trip')">+ Log Trip</button>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Vehicle</th>
+            <th>From → To</th>
+            <th>Distance</th>
+            <th>Purpose</th>
+            <th>Notes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="trip-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5. EXPENSE REPORTS VIEW -->
+  <div id="view-reports" class="tab-view" style="display: none;">
+    <div class="card no-print" style="margin-bottom: 20px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+        <div style="flex: 1; min-width: 140px;">
+          <label class="form-label">Vehicle</label>
+          <select id="rep-vehicle" class="form-control" onchange="generateReport()">
+            <option value="all">All Vehicles</option>
+          </select>
+        </div>
+        <div style="flex: 1; min-width: 140px;">
+          <label class="form-label">Period</label>
+          <select id="rep-period" class="form-control" onchange="generateReport()">
+            <option value="all">All Time</option>
+            <option value="month">This Month</option>
+            <option value="last-month">Last Month</option>
+            <option value="3months">Last 3 Months</option>
+            <option value="6months">Last 6 Months</option>
+            <option value="year">This Year</option>
+          </select>
+        </div>
+        <div style="flex: 1; min-width: 140px;">
+          <label class="form-label">Category</label>
+          <select id="rep-category" class="form-control" onchange="generateReport()">
+            <option value="all">All (Fuel & Trips)</option>
+            <option value="fuel">Fuel Fill-ups Only</option>
+            <option value="trips">Trips Only</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨️ Print Report</button>
+          <button class="btn btn-success btn-sm" onclick="exportReportCSV()">📥 Export CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Print Header Only -->
+    <div style="display: none;" class="print-only">
+      <h2 style="margin-bottom: 4px;">Fleet Mileage & Expense Report</h2>
+      <p style="font-size: 12px; color: #555; margin-bottom: 16px;" id="print-date"></p>
+    </div>
+
+    <!-- Summary KPI cards -->
+    <div class="grid-4" style="margin-bottom: 20px;">
+      <div class="card">
+        <div class="stat-label">Filtered Distance</div>
+        <div class="stat-value" id="rep-stat-dist">0 km</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Fuel Expenditure</div>
+        <div class="stat-value" id="rep-stat-cost">₹0</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Period Avg Mileage</div>
+        <div class="stat-value" id="rep-stat-mileage">0 km/L</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Avg Fuel Cost/km</div>
+        <div class="stat-value" id="rep-stat-costkm">₹0</div>
+      </div>
+    </div>
+
+    <h3 style="font-size: 16px; margin-bottom: 12px;">Monthly Breakdown</h3>
+    <div class="table-container" style="margin-bottom: 24px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Distance</th>
+            <th>Fuel Qty</th>
+            <th>Fuel Spend</th>
+            <th>Avg Mileage</th>
+            <th>Cost / Distance</th>
+          </tr>
+        </thead>
+        <tbody id="rep-monthly-table-body"></tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size: 16px; margin-bottom: 12px;">Detailed Log Items</h3>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Vehicle</th>
+            <th>Description</th>
+            <th>Distance</th>
+            <th>Cost</th>
+          </tr>
+        </thead>
+        <tbody id="rep-detailed-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 6. SETTINGS VIEW -->
+  <div id="view-settings" class="tab-view" style="display: none;">
+    <div class="card" style="max-width: 650px; margin: 0 auto 24px;">
+      <h3 style="font-size: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">Units & Localization</h3>
+      <div class="form-group">
+        <label class="form-label">Currency Symbol</label>
+        <select id="setting-currency" class="form-control" onchange="updateSetting('currency', this.value)">
+          <option value="₹">₹ - Indian Rupee (INR)</option>
+          <option value="$">$ - US Dollar (USD)</option>
+          <option value="€">€ - Euro (EUR)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Distance Unit</label>
+        <select id="setting-distance" class="form-control" onchange="updateSetting('distanceUnit', this.value)">
+          <option value="km">Kilometres (km & km/L)</option>
+          <option value="miles">Miles (mi & MPG)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color Theme</label>
+        <select id="setting-theme" class="form-control" onchange="updateSetting('theme', this.value)">
+          <option value="dark">Dark Theme (#0F172A)</option>
+          <option value="light">Light Theme</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card" style="max-width: 650px; margin: 0 auto 24px;">
+      <h3 style="font-size: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">Backup & Restore Data</h3>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+        All tracker data is stored securely in your browser's persistent localStorage (`v1_mileage_data`).
+      </p>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button class="btn btn-secondary" onclick="exportBackupJSON()">💾 Backup Data (JSON)</button>
+        <label class="btn btn-secondary" style="cursor: pointer;">
+          📥 Restore from Backup
+          <input type="file" id="backup-file-input" accept=".json" style="display: none;" onchange="importBackupJSON(event)">
+        </label>
+      </div>
+    </div>
+
+    <div class="card" style="max-width: 650px; margin: 0 auto;">
+      <h3 style="font-size: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; color: var(--danger);">Demo & Reset</h3>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button class="btn btn-secondary" onclick="clearDemoData()">🗑️ Clear Demo Data</button>
+        <button class="btn btn-danger" onclick="confirmClearAll()">⚠️ Clear All Data</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 14px;">App Version: <strong>v1.2.0 - Vehicle Mileage Tracker (Offline Ready)</strong></p>
+    </div>
+  </div>
+
+</main>
+
+<!-- Mobile Bottom Navigation -->
+<nav id="bottom-nav">
+  <div class="b-nav-item active" onclick="switchTab('dashboard')"><span class="icon">📊</span>Dashboard</div>
+  <div class="b-nav-item" onclick="switchTab('vehicles')"><span class="icon">🚗</span>Vehicles</div>
+  <div class="b-nav-item" onclick="switchTab('fillups')"><span class="icon">⛽</span>Fill-up</div>
+  <div class="b-nav-item" onclick="switchTab('trips')"><span class="icon">📍</span>Trips</div>
+  <div class="b-nav-item" onclick="switchTab('reports')"><span class="icon">📑</span>Reports</div>
+</nav>
+
+<!-- MODALS -->
+
+<!-- 1. Add/Edit Vehicle Modal -->
+<div class="modal-backdrop" id="modal-vehicle">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="vehicle-modal-title">Add Vehicle</span>
+      <button class="close-btn" onclick="closeModal('modal-vehicle')">×</button>
+    </div>
+    <form id="form-vehicle" onsubmit="saveVehicle(event)">
+      <input type="hidden" id="veh-id">
+      <div class="form-group">
+        <label class="form-label">Vehicle Name *</label>
+        <input type="text" id="veh-name" class="form-control" placeholder="e.g. Honda City, Royal Enfield" required>
+        <div class="form-error" id="veh-err-name">Please enter vehicle name</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Vehicle Type</label>
+          <select id="veh-type" class="form-control">
+            <option value="Car">🚗 Car / Sedan / SUV</option>
+            <option value="Bike">🏍️ Bike / Motorcycle</option>
+            <option value="Truck">🚚 Truck / Lorry</option>
+            <option value="Auto">🛺 Auto / Rickshaw</option>
+            <option value="Van">🚐 Van / Bus</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fuel Type</label>
+          <select id="veh-fuel" class="form-control">
+            <option value="Petrol">Petrol</option>
+            <option value="Diesel">Diesel</option>
+            <option value="EV">Electric (EV)</option>
+            <option value="CNG">CNG</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Registration No.</label>
+          <input type="text" id="veh-reg" class="form-control" placeholder="e.g. MH 02 AB 1234">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color Tag</label>
+          <select id="veh-color" class="form-control">
+            <option value="#3B82F6">🔵 Electric Blue</option>
+            <option value="#10B981">🟢 Emerald Green</option>
+            <option value="#F59E0B">🟡 Amber Gold</option>
+            <option value="#EF4444">🔴 Ruby Red</option>
+            <option value="#8B5CF6">🟣 Royal Purple</option>
+            <option value="#06B6D4">🩵 Cyan</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Initial Odometer Reading</label>
+        <input type="number" step="any" id="veh-initial-odo" class="form-control" placeholder="0" min="0">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-vehicle')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Vehicle</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 2. Log Fill-up Modal -->
+<div class="modal-backdrop" id="modal-fillup">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="fillup-modal-title">Log Fuel Fill-up</span>
+      <button class="close-btn" onclick="closeModal('modal-fillup')">×</button>
+    </div>
+    <form id="form-fillup" onsubmit="saveFillup(event)">
+      <input type="hidden" id="fillup-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Vehicle *</label>
+          <select id="fillup-veh" class="form-control" required onchange="onFillupVehicleChanged()"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date *</label>
+          <input type="date" id="fillup-date" class="form-control" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Current Odometer Reading (<span class="unit-dist">km</span>) *</label>
+        <input type="number" step="any" id="fillup-odo" class="form-control" required placeholder="e.g. 24500" oninput="calculateFillupPreview()">
+        <div class="form-error" id="fillup-err-odo">Odometer must be greater than previous reading!</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;" id="fillup-prev-odo-text"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Quantity (<span class="unit-vol">L</span>) *</label>
+          <input type="number" step="any" id="fillup-qty" class="form-control" required min="0.1" placeholder="e.g. 35.5" oninput="calculateFillupPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Price per unit (<span class="unit-curr">₹</span>) *</label>
+          <input type="number" step="any" id="fillup-price" class="form-control" required min="0.1" placeholder="e.g. 102.50" oninput="calculateFillupPreview()">
+        </div>
+      </div>
+
+      <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); padding: 10px 14px; border-radius: 8px;">
+        <label for="fillup-fulltank" style="font-size: 13px; font-weight: 600; cursor: pointer;">Full Tank Fill-up? (Required for accurate mileage calculation)</label>
+        <input type="checkbox" id="fillup-fulltank" checked style="width: 18px; height: 18px; cursor: pointer;" onchange="calculateFillupPreview()">
+      </div>
+
+      <!-- Live Calculation Box -->
+      <div class="preview-calc-box" id="fillup-calc-box">
+        <div>Total Cost: <strong id="calc-total-cost" style="color: var(--accent);">₹0.00</strong></div>
+        <div>Distance: <strong id="calc-dist" style="color: var(--text-primary);">0 km</strong></div>
+        <div>Mileage: <strong id="calc-mileage" style="color: var(--success);">--</strong></div>
+      </div>
+
+      <!-- Alert if mileage drop > 15% -->
+      <div id="fillup-warning-alert" class="alert-banner warning" style="display: none; margin-bottom: 12px;">
+        ⚠️ Warning: This calculated mileage is over 15% lower than this vehicle's average. Check for tire pressure or mechanical issues!
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fuel Station (Optional)</label>
+          <input type="text" id="fillup-station" class="form-control" placeholder="e.g. Shell, IndianOil, HP">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes (Optional)</label>
+          <input type="text" id="fillup-notes" class="form-control" placeholder="e.g. Highway trip, AC on full">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-fillup')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Fill-up</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 3. Log Trip Modal -->
+<div class="modal-backdrop" id="modal-trip">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="trip-modal-title">Log Trip</span>
+      <button class="close-btn" onclick="closeModal('modal-trip')">×</button>
+    </div>
+    <form id="form-trip" onsubmit="saveTrip(event)">
+      <input type="hidden" id="trip-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Vehicle *</label>
+          <select id="trip-veh" class="form-control" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date *</label>
+          <input type="date" id="trip-date" class="form-control" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Start Location</label>
+          <input type="text" id="trip-start" class="form-control" placeholder="e.g. Home, Downtown">
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Location</label>
+          <input type="text" id="trip-end" class="form-control" placeholder="e.g. Client Office, Airport">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Distance (<span class="unit-dist">km</span>) *</label>
+          <input type="number" step="any" id="trip-dist" class="form-control" required min="0.1" placeholder="e.g. 42.5">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Purpose *</label>
+          <select id="trip-purpose" class="form-control">
+            <option value="Personal">Personal</option>
+            <option value="Business">Business</option>
+            <option value="Rental">Rental</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes (Optional)</label>
+        <input type="text" id="trip-notes" class="form-control" placeholder="e.g. Client meeting in Bandra">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-trip')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Trip</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast element -->
+<div id="toast">Operation completed successfully</div>
+
+<script>
+/* ==========================================================================
+   VEHICLE MILEAGE TRACKER - CORE JAVASCRIPT ENGINE
+   ========================================================================== */
+
+const STORAGE_KEY = 'v1_mileage_data';
+
+// Default App State
+let AppState = {
+  version: '1.0.0',
+  settings: {
+    currency: '₹',
+    distanceUnit: 'km',
+    theme: 'dark',
+    isDemoLoaded: true
+  },
+  vehicles: [],
+  fillups: [],
+  trips: []
+};
+
+// Global chart references
+let chartMileageInstance = null;
+let chartSpendInstance = null;
+
+// Initial 6 Months Demo Data Generator
+function generateDemoData() {
+  const now = new Date();
+  const v1Id = 'demo-veh-1';
+  const v2Id = 'demo-veh-2';
+
+  const demoVehicles = [
+    {
+      id: v1Id,
+      name: 'Honda City i-VTEC',
+      type: 'Car',
+      fuel: 'Petrol',
+      reg: 'MH 02 CK 4589',
+      color: '#3B82F6',
+      initialOdo: 25000
+    },
+    {
+      id: v2Id,
+      name: 'Royal Enfield Classic 350',
+      type: 'Bike',
+      fuel: 'Petrol',
+      reg: 'DL 05 AB 7712',
+      color: '#10B981',
+      initialOdo: 8200
+    }
+  ];
+
+  // Generate 6 months of fillups and trips
+  const demoFillups = [];
+  const demoTrips = [];
+
+  // Honda City: ~14.5 - 15.5 km/L
+  let odo1 = 25000;
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - i);
+    d.setDate(Math.min(10, d.getDate()));
+    odo1 += Math.floor(480 + Math.random() * 80); // ~500 km per month
+    const qty = +(odo1 > 25000 ? (500 / (14.5 + (Math.random() * 1.5))).toFixed(2) : 35);
+    const price = +(101.5 + (Math.random() * 3)).toFixed(2);
+    demoFillups.push({
+      id: 'f-v1-' + i,
+      vehicleId: v1Id,
+      date: d.toISOString().split('T')[0],
+      odometer: odo1,
+      quantity: qty,
+      price: price,
+      fullTank: true,
+      station: 'IndianOil Express',
+      notes: i === 0 ? 'City & Expressway drive' : 'Regular commute'
+    });
+  }
+
+  // Bike: ~32 - 36 km/L
+  let odo2 = 8200;
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - i);
+    d.setDate(Math.min(22, d.getDate()));
+    odo2 += Math.floor(260 + Math.random() * 50); // ~280 km
+    const qty = +(280 / (33 + Math.random() * 3)).toFixed(2);
+    const price = +(102.0 + (Math.random() * 2)).toFixed(2);
+    demoFillups.push({
+      id: 'f-v2-' + i,
+      vehicleId: v2Id,
+      date: d.toISOString().split('T')[0],
+      odometer: odo2,
+      quantity: qty,
+      price: price,
+      fullTank: true,
+      station: 'Shell FuelPoint',
+      notes: 'Weekly office runs'
+    });
+  }
+
+  // Trips
+  const locations = [
+    { start: 'Andheri West', end: 'BKC Tech Hub', dist: 18, purp: 'Business' },
+    { start: 'Residence', end: 'Navi Mumbai Airport', dist: 45, purp: 'Personal' },
+    { start: 'Connaught Place', end: 'Gurgaon Cyber City', dist: 32, purp: 'Business' },
+    { start: 'Bandra', end: 'South Mumbai', dist: 22, purp: 'Personal' },
+    { start: 'Warehouse Hub', end: 'Client Office', dist: 65, purp: 'Business' }
+  ];
+
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (i * 12));
+    const loc = locations[i % locations.length];
+    demoTrips.push({
+      id: 'trip-' + i,
+      vehicleId: (i % 2 === 0 ? v1Id : v2Id),
+      date: d.toISOString().split('T')[0],
+      start: loc.start,
+      end: loc.end,
+      distance: loc.dist,
+      purpose: loc.purp,
+      notes: 'Scheduled business commute'
+    });
+  }
+
+  return {
+    version: '1.0.0',
+    settings: {
+      currency: '₹',
+      distanceUnit: 'km',
+      theme: 'dark',
+      isDemoLoaded: true
+    },
+    vehicles: demoVehicles,
+    fillups: demoFillups,
+    trips: demoTrips
+  };
+}
+
+// Storage Operations
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.vehicles)) {
+        AppState = parsed;
+        return;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to parse storage:', e);
+  }
+  // If first open, load rich demo data
+  AppState = generateDemoData();
+  saveState();
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(AppState));
+  } catch (e) {
+    console.error('Failed to save state:', e);
+  }
+}
+
+// Helpers: Units & Formats
+function getDistUnit() {
+  return AppState.settings.distanceUnit || 'km';
+}
+
+function getVolUnit() {
+  return getDistUnit() === 'km' ? 'L' : 'gal';
+}
+
+function getEfficiencyUnit() {
+  return getDistUnit() === 'km' ? 'km/L' : 'MPG';
+}
+
+function getCurrency() {
+  return AppState.settings.currency || '₹';
+}
+
+// Distance conversion: km stored natively
+function formatDist(kmVal) {
+  if (kmVal == null || isNaN(kmVal)) return '0 ' + getDistUnit();
+  const val = getDistUnit() === 'miles' ? kmVal * 0.621371 : kmVal;
+  return val.toLocaleString(undefined, { maximumFractionDigits: 1 }) + ' ' + getDistUnit();
+}
+
+function formatCost(val) {
+  if (val == null || isNaN(val)) return getCurrency() + '0';
+  return getCurrency() + Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.innerText = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Tab Switching
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-view').forEach(v => v.style.display = 'none');
+  const target = document.getElementById('view-' + tabId);
+  if (target) target.style.display = 'block';
+
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.b-nav-item').forEach(el => el.classList.remove('active'));
+
+  // Highlight active
+  const menuMap = {
+    'dashboard': 0, 'vehicles': 1, 'fillups': 2, 'trips': 3, 'reports': 4, 'settings': 5
+  };
+  const items = document.querySelectorAll('.nav-item');
+  if (items[menuMap[tabId]]) items[menuMap[tabId]].classList.add('active');
+
+  const bItems = document.querySelectorAll('.b-nav-item');
+  if (bItems[menuMap[tabId]]) bItems[menuMap[tabId]].classList.add('active');
+
+  // Headings
+  const headings = {
+    'dashboard': ['Fleet Dashboard', 'Comprehensive overview of fuel usage, mileage, and trips'],
+    'vehicles': ['Vehicles Directory', 'Manage and monitor all your vehicles'],
+    'fillups': ['Fuel Fill-up Logs', 'Detailed history of refills, costs, and calculated mileage'],
+    'trips': ['Trip & Travel Logs', 'Track business vs personal travel distances'],
+    'reports': ['Expense & Mileage Reports', 'Detailed monthly breakdown, print-ready sheets, and CSV export'],
+    'settings': ['Settings & Data Management', 'Configure units, backups, and app preferences']
+  };
+  if (headings[tabId]) {
+    document.getElementById('page-heading').innerText = headings[tabId][0];
+    document.getElementById('page-subheading').innerText = headings[tabId][1];
+  }
+
+  // Refresh tab contents
+  if (tabId === 'dashboard') renderDashboard();
+  if (tabId === 'vehicles') renderVehicles();
+  if (tabId === 'fillups') renderFillupTable();
+  if (tabId === 'trips') renderTripTable();
+  if (tabId === 'reports') generateReport();
+  if (tabId === 'settings') renderSettings();
+}
+
+// Vehicle icon mapping
+function getVehicleIcon(type) {
+  switch (type) {
+    case 'Bike': return '🏍️';
+    case 'Truck': return '🚚';
+    case 'Auto': return '🛺';
+    case 'Van': return '🚐';
+    default: return '🚗';
+  }
+}
+
+// Vehicle Calculation Utilities
+function getVehicleStats(vehId) {
+  const veh = AppState.vehicles.find(v => v.id === vehId);
+  if (!veh) return { totalDist: 0, totalFuelCost: 0, avgMileage: 0, lastFillup: null, trend: 'none' };
+
+  // Sort fillups by odometer ascending
+  const fillups = AppState.fillups
+    .filter(f => f.vehicleId === vehId)
+    .sort((a, b) => a.odometer - b.odometer);
+
+  let totalDist = 0;
+  let totalFuelCost = 0;
+  let efficiencies = [];
+
+  for (let i = 0; i < fillups.length; i++) {
+    const cur = fillups[i];
+    const prev = i > 0 ? fillups[i - 1] : null;
+    totalFuelCost += (cur.quantity * cur.price);
+
+    if (prev && cur.fullTank && prev.fullTank) {
+      const dist = cur.odometer - prev.odometer;
+      if (dist > 0 && cur.quantity > 0) {
+        const eff = dist / cur.quantity;
+        efficiencies.push(eff);
+      }
+    }
+  }
+
+  if (fillups.length > 1) {
+    totalDist = fillups[fillups.length - 1].odometer - fillups[0].odometer;
+  } else if (fillups.length === 1) {
+    totalDist = Math.max(0, fillups[0].odometer - (veh.initialOdo || 0));
+  }
+
+  const avgMileage = efficiencies.length > 0
+    ? (efficiencies.reduce((a, b) => a + b, 0) / efficiencies.length)
+    : 0;
+
+  // Trend: compare latest efficiency with overall average
+  let trend = 'none';
+  if (efficiencies.length >= 2) {
+    const latest = efficiencies[efficiencies.length - 1];
+    if (latest >= avgMileage * 1.02) trend = 'up';
+    else if (latest <= avgMileage * 0.98) trend = 'down';
+  }
+
+  const lastFillup = fillups.length > 0 ? fillups[fillups.length - 1] : null;
+  const costPerDist = totalDist > 0 ? (totalFuelCost / totalDist) : 0;
+
+  return { totalDist, totalFuelCost, avgMileage, lastFillup, trend, costPerDist, efficiencies };
+}
+
+// Smart Alerts Detection
+function renderSmartAlerts() {
+  const container = document.getElementById('smart-alerts-container');
+  container.innerHTML = '';
+  const now = new Date();
+
+  AppState.vehicles.forEach(veh => {
+    const stats = getVehicleStats(veh.id);
+    const fillups = AppState.fillups
+      .filter(f => f.vehicleId === veh.id)
+      .sort((a, b) => a.odometer - b.odometer);
+
+    // Alert 1: No fill-up in 30+ days
+    if (stats.lastFillup) {
+      const lastDate = new Date(stats.lastFillup.date);
+      const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
+      if (diffDays >= 30) {
+        const alertEl = document.createElement('div');
+        alertEl.className = 'alert-banner warning';
+        alertEl.innerHTML = `
+          <div>⏳ <strong>${veh.name}</strong> has had no fill-up logged in <strong>${diffDays} days</strong> (last on ${stats.lastFillup.date}).</div>
+          <button class="btn btn-secondary btn-sm" onclick="openFillupForVehicle('${veh.id}')">Log Fill-up</button>
+        `;
+        container.appendChild(alertEl);
+      }
+    }
+
+    // Alert 2: Significant Mileage Drop (>15%)
+    if (stats.efficiencies && stats.efficiencies.length >= 2) {
+      const latestEff = stats.efficiencies[stats.efficiencies.length - 1];
+      if (latestEff < (stats.avgMileage * 0.85)) {
+        const dropPct = Math.round(((stats.avgMileage - latestEff) / stats.avgMileage) * 100);
+        const alertEl = document.createElement('div');
+        alertEl.className = 'alert-banner';
+        alertEl.innerHTML = `
+          <div>⚠️ <strong>Mileage Drop Warning:</strong> ${veh.name}'s latest mileage (${latestEff.toFixed(1)} ${getEfficiencyUnit()}) dropped by <strong>${dropPct}%</strong> vs average. Possible engine or tire pressure issue!</div>
+        `;
+        container.appendChild(alertEl);
+      }
+    }
+
+    // Alert 3: Large Odometer Gap (> 1,500 km between consecutive fillups)
+    for (let i = 1; i < fillups.length; i++) {
+      const gap = fillups[i].odometer - fillups[i - 1].odometer;
+      if (gap > 1500) {
+        const alertEl = document.createElement('div');
+        alertEl.className = 'alert-banner info';
+        alertEl.innerHTML = `
+          <div>ℹ️ Large odometer gap of <strong>${formatDist(gap)}</strong> detected for ${veh.name} on ${fillups[i].date}. You might have missed logging an intermediate fill-up.</div>
+        `;
+        container.appendChild(alertEl);
+        break; // Show once per vehicle
+      }
+    }
+  });
+}
+
+// Render Dashboard View
+function renderDashboard() {
+  renderSmartAlerts();
+
+  let fleetDist = 0;
+  let fleetCost = 0;
+  let allEfficiencies = [];
+
+  const vGrid = document.getElementById('dashboard-vehicles-grid');
+  vGrid.innerHTML = '';
+
+  document.getElementById('sidebar-v-count').innerText = `${AppState.vehicles.length} Vehicle${AppState.vehicles.length === 1 ? '' : 's'} Active`;
+
+  if (AppState.vehicles.length === 0) {
+    vGrid.innerHTML = `
+      <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+        <div style="font-size: 48px; margin-bottom: 12px;">🚗</div>
+        <h3 style="margin-bottom: 8px;">No Vehicles Added Yet</h3>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;">Add your first car, motorcycle, truck, or commercial vehicle to start tracking.</p>
+        <button class="btn btn-primary" onclick="openModal('modal-vehicle')">+ Add First Vehicle</button>
+      </div>
+    `;
+  }
+
+  AppState.vehicles.forEach(veh => {
+    const stats = getVehicleStats(veh.id);
+    fleetDist += stats.totalDist;
+    fleetCost += stats.totalFuelCost;
+    if (stats.avgMileage > 0) allEfficiencies.push(stats.avgMileage);
+
+    const trendIcon = stats.trend === 'up'
+      ? '<span class="trend-up">↑ Improving</span>'
+      : (stats.trend === 'down' ? '<span class="trend-down">↓ Dropping</span>' : '<span style="color:var(--text-muted)">— Stable</span>');
+
+    const card = document.createElement('div');
+    card.className = 'card v-card';
+    card.style.borderLeftColor = veh.color || 'var(--accent)';
+    card.innerHTML = `
+      <div>
+        <div class="v-card-header">
+          <div>
+            <span style="font-size: 22px; vertical-align: middle;">${getVehicleIcon(veh.type)}</span>
+            <strong style="font-size: 15px; margin-left: 6px;">${veh.name}</strong>
+          </div>
+          <span class="v-badge" style="color: ${veh.color}">${veh.fuel}</span>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">${veh.reg || 'No Reg Plate'}</div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+          <div>
+            <div class="stat-label">Mileage</div>
+            <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">${stats.avgMileage > 0 ? stats.avgMileage.toFixed(1) + ' ' + getEfficiencyUnit() : '--'}</div>
+          </div>
+          <div>
+            <div class="stat-label">Cost / Dist</div>
+            <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">${stats.costPerDist > 0 ? formatCost(stats.costPerDist) + '/' + getDistUnit() : '--'}</div>
+          </div>
+        </div>
+
+        <div style="font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 8px;">
+          <span>Last: ${stats.lastFillup ? stats.lastFillup.date : 'No logs'}</span>
+          <span>${trendIcon}</span>
+        </div>
+      </div>
+      <div style="margin-top: 12px;">
+        <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center;" onclick="openFillupForVehicle('${veh.id}')">+ Log Fill-up</button>
+      </div>
+    `;
+    vGrid.appendChild(card);
+  });
+
+  // Fleet summary values
+  document.getElementById('stat-total-dist').innerText = formatDist(fleetDist);
+  document.getElementById('stat-total-cost').innerText = formatCost(fleetCost);
+  const avgEff = allEfficiencies.length > 0 ? (allEfficiencies.reduce((a, b) => a + b, 0) / allEfficiencies.length) : 0;
+  document.getElementById('stat-avg-mileage').innerText = avgEff > 0 ? avgEff.toFixed(1) + ' ' + getEfficiencyUnit() : '--';
+  const fleetCostPerDist = fleetDist > 0 ? (fleetCost / fleetDist) : 0;
+  document.getElementById('stat-cost-per-km').innerText = fleetCostPerDist > 0 ? formatCost(fleetCostPerDist) + ' / ' + getDistUnit() : '--';
+
+  renderDashboardCharts();
+}
+
+// Render Dashboard Charts with Chart.js
+function renderDashboardCharts() {
+  if (typeof Chart === 'undefined') return;
+
+  const isDark = AppState.settings.theme !== 'light';
+  const gridColor = isDark ? '#334155' : '#E2E8F0';
+  const textColor = isDark ? '#94A3B8' : '#64748B';
+
+  // 1. Mileage Trend Chart (Last 10 Fill-ups per vehicle)
+  const mileageCtx = document.getElementById('chart-mileage');
+  if (mileageCtx) {
+    if (chartMileageInstance) chartMileageInstance.destroy();
+
+    const datasets = AppState.vehicles.map(veh => {
+      const fillups = AppState.fillups
+        .filter(f => f.vehicleId === veh.id && f.fullTank)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      const points = [];
+      for (let i = 1; i < fillups.length; i++) {
+        const prev = fillups[i - 1];
+        const cur = fillups[i];
+        const dist = cur.odometer - prev.odometer;
+        if (dist > 0 && cur.quantity > 0) {
+          points.push({ x: cur.date, y: +(dist / cur.quantity).toFixed(1) });
+        }
+      }
+      const last10 = points.slice(-10);
+
+      return {
+        label: veh.name,
+        data: last10.map(p => p.y),
+        borderColor: veh.color || '#3B82F6',
+        backgroundColor: veh.color || '#3B82F6',
+        tension: 0.3,
+        borderWidth: 2,
+        pointRadius: 4
+      };
+    });
+
+    // Generate labels
+    const maxLen = Math.max(...datasets.map(d => d.data.length), 0);
+    const labels = Array.from({ length: maxLen }, (_, i) => `Fill-up #${i + 1}`);
+
+    chartMileageInstance = new Chart(mileageCtx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: textColor, boxWidth: 12 } }
+        },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: textColor } },
+          y: {
+            grid: { color: gridColor },
+            ticks: { color: textColor },
+            title: { display: true, text: getEfficiencyUnit(), color: textColor }
+          }
+        }
+      }
+    });
+  }
+
+  // 2. Monthly Spend Bar Chart
+  const spendCtx = document.getElementById('chart-spend');
+  if (spendCtx) {
+    if (chartSpendInstance) chartSpendInstance.destroy();
+
+    // Group fillup spends by Month (YYYY-MM)
+    const monthMap = {};
+    const now = new Date();
+    // Pre-populate last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+      monthMap[key] = 0;
+    }
+
+    AppState.fillups.forEach(f => {
+      const d = new Date(f.date);
+      const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+      if (monthMap.hasOwnProperty(key)) {
+        monthMap[key] += (f.quantity * f.price);
+      }
+    });
+
+    chartSpendInstance = new Chart(spendCtx, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(monthMap),
+        datasets: [{
+          label: `Fuel Spend (${getCurrency()})`,
+          data: Object.values(monthMap),
+          backgroundColor: '#3B82F6',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: textColor } },
+          y: {
+            grid: { color: gridColor },
+            ticks: { color: textColor },
+            title: { display: true, text: getCurrency(), color: textColor }
+          }
+        }
+      }
+    });
+  }
+}
+
+// Render Vehicles Tab
+function renderVehicles() {
+  const container = document.getElementById('all-vehicles-grid');
+  container.innerHTML = '';
+
+  if (AppState.vehicles.length === 0) {
+    container.innerHTML = `
+      <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+        <div style="font-size: 40px;">🚗</div>
+        <h3>No vehicles recorded</h3>
+        <p style="color: var(--text-muted); margin: 8px 0 16px;">Add your personal, family, or fleet vehicles.</p>
+        <button class="btn btn-primary" onclick="openModal('modal-vehicle')">+ Add Vehicle</button>
+      </div>
+    `;
+    return;
+  }
+
+  AppState.vehicles.forEach(veh => {
+    const stats = getVehicleStats(veh.id);
+    const fillupCount = AppState.fillups.filter(f => f.vehicleId === veh.id).length;
+    const tripCount = AppState.trips.filter(t => t.vehicleId === veh.id).length;
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.borderLeft = `6px solid ${veh.color || 'var(--accent)'}`;
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+        <div>
+          <span style="font-size: 24px; vertical-align: middle;">${getVehicleIcon(veh.type)}</span>
+          <strong style="font-size: 16px; margin-left: 8px;">${veh.name}</strong>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Reg: ${veh.reg || 'N/A'} • Fuel: ${veh.fuel}</div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-secondary btn-sm" onclick="editVehicle('${veh.id}')">✏️</button>
+          <button class="btn btn-secondary btn-sm" style="color: var(--danger);" onclick="deleteVehicle('${veh.id}')">🗑️</button>
+        </div>
+      </div>
+
+      <div class="grid-4" style="margin-bottom: 12px;">
+        <div>
+          <div class="stat-label">Total Distance</div>
+          <div style="font-weight: 700;">${formatDist(stats.totalDist)}</div>
+        </div>
+        <div>
+          <div class="stat-label">Avg Mileage</div>
+          <div style="font-weight: 700; color: var(--success);">${stats.avgMileage > 0 ? stats.avgMileage.toFixed(1) + ' ' + getEfficiencyUnit() : '--'}</div>
+        </div>
+        <div>
+          <div class="stat-label">Total Fuel Cost</div>
+          <div style="font-weight: 700;">${formatCost(stats.totalFuelCost)}</div>
+        </div>
+        <div>
+          <div class="stat-label">Entries</div>
+          <div style="font-weight: 700;">${fillupCount} fuel / ${tripCount} trips</div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="openFillupForVehicle('${veh.id}')">+ Log Fuel</button>
+        <button class="btn btn-secondary btn-sm" onclick="openTripForVehicle('${veh.id}')">+ Log Trip</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// Render Fuel Fill-up Table
+function renderFillupTable() {
+  populateVehicleSelects();
+  const filterVeh = document.getElementById('fillup-filter-vehicle').value;
+  const tbody = document.getElementById('fillup-table-body');
+  tbody.innerHTML = '';
+
+  let list = [...AppState.fillups].sort((a, b) => new Date(b.date) - new Date(a.date) || b.odometer - a.odometer);
+  if (filterVeh !== 'all') {
+    list = list.filter(f => f.vehicleId === filterVeh);
+  }
+
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 24px; color: var(--text-muted);">No fuel fill-ups found. Click "+ Log Fill-up" to record your fuel receipts.</td></tr>`;
+    return;
+  }
+
+  list.forEach(f => {
+    const veh = AppState.vehicles.find(v => v.id === f.vehicleId) || { name: 'Unknown', color: '#999' };
+    const vehFillups = AppState.fillups.filter(x => x.vehicleId === f.vehicleId).sort((a, b) => a.odometer - b.odometer);
+    const idx = vehFillups.findIndex(x => x.id === f.id);
+    const prev = idx > 0 ? vehFillups[idx - 1] : null;
+
+    let dist = '--';
+    let mileage = '--';
+    if (prev) {
+      const d = f.odometer - prev.odometer;
+      dist = formatDist(d);
+      if (f.fullTank && prev.fullTank && d > 0 && f.quantity > 0) {
+        mileage = (d / f.quantity).toFixed(1) + ' ' + getEfficiencyUnit();
+      }
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${f.date}</td>
+      <td><span class="color-dot" style="background: ${veh.color}"></span>${veh.name}</td>
+      <td>${f.odometer.toLocaleString()} ${getDistUnit()}</td>
+      <td>${dist}</td>
+      <td>${f.quantity} ${getVolUnit()}</td>
+      <td>${getCurrency()}${f.price}</td>
+      <td><strong>${formatCost(f.quantity * f.price)}</strong></td>
+      <td style="color: var(--success); font-weight: 600;">${mileage}</td>
+      <td>${f.station || '—'}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="editFillup('${f.id}')">✏️</button>
+        <button class="btn btn-secondary btn-sm" style="color: var(--danger);" onclick="deleteFillup('${f.id}')">🗑️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Render Trip Log Table
+function renderTripTable() {
+  populateVehicleSelects();
+  const filterVeh = document.getElementById('trip-filter-vehicle').value;
+  const filterPurp = document.getElementById('trip-filter-purpose').value;
+  const tbody = document.getElementById('trip-table-body');
+  tbody.innerHTML = '';
+
+  let list = [...AppState.trips].sort((a, b) => new Date(b.date) - new Date(a.date));
+  if (filterVeh !== 'all') list = list.filter(t => t.vehicleId === filterVeh);
+  if (filterPurp !== 'all') list = list.filter(t => t.purpose === filterPurp);
+
+  // Running totals
+  let businessKm = 0;
+  let personalKm = 0;
+  let otherKm = 0;
+
+  AppState.trips.forEach(t => {
+    if (filterVeh === 'all' || t.vehicleId === filterVeh) {
+      if (t.purpose === 'Business') businessKm += t.distance;
+      else if (t.purpose === 'Personal') personalKm += t.distance;
+      else otherKm += t.distance;
+    }
+  });
+
+  document.getElementById('stat-trips-count').innerText = list.length;
+  document.getElementById('stat-trips-business').innerText = formatDist(businessKm);
+  document.getElementById('stat-trips-personal').innerText = formatDist(personalKm);
+  document.getElementById('stat-trips-other').innerText = formatDist(otherKm);
+
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">No trips logged yet. Record trips to separate business and personal tax mileage.</td></tr>`;
+    return;
+  }
+
+  list.forEach(t => {
+    const veh = AppState.vehicles.find(v => v.id === t.vehicleId) || { name: 'Unknown', color: '#999' };
+    const purpClass = t.purpose === 'Business' ? 'tag-business' : (t.purpose === 'Rental' ? 'tag-rental' : 'tag-personal');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${t.date}</td>
+      <td><span class="color-dot" style="background: ${veh.color}"></span>${veh.name}</td>
+      <td><strong>${t.start || 'Start'}</strong> → <strong>${t.end || 'End'}</strong></td>
+      <td>${formatDist(t.distance)}</td>
+      <td><span class="tag ${purpClass}">${t.purpose}</span></td>
+      <td>${t.notes || '—'}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="editTrip('${t.id}')">✏️</button>
+        <button class="btn btn-secondary btn-sm" style="color: var(--danger);" onclick="deleteTrip('${t.id}')">🗑️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Populate Vehicle Select Dropdowns
+function populateVehicleSelects() {
+  const selects = [
+    'fillup-filter-vehicle', 'trip-filter-vehicle', 'rep-vehicle',
+    'fillup-veh', 'trip-veh'
+  ];
+
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const currentVal = el.value;
+    const isFilter = id.includes('filter') || id.includes('rep');
+
+    el.innerHTML = '';
+    if (isFilter) {
+      const opt = document.createElement('option');
+      opt.value = 'all';
+      opt.innerText = 'All Vehicles';
+      el.appendChild(opt);
+    }
+
+    AppState.vehicles.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.id;
+      opt.innerText = `${getVehicleIcon(v.type)} ${v.name} (${v.reg || v.fuel})`;
+      el.appendChild(opt);
+    });
+
+    if (currentVal && el.querySelector(`option[value="${currentVal}"]`)) {
+      el.value = currentVal;
+    }
+  });
+
+  // Update dynamic unit texts in forms
+  document.querySelectorAll('.unit-dist').forEach(el => el.innerText = getDistUnit());
+  document.querySelectorAll('.unit-vol').forEach(el => el.innerText = getVolUnit());
+  document.querySelectorAll('.unit-curr').forEach(el => el.innerText = getCurrency());
+}
+
+// Modal Controllers
+function openModal(id) {
+  populateVehicleSelects();
+  const el = document.getElementById(id);
+  if (el) el.classList.add('open');
+
+  if (id === 'modal-fillup') {
+    if (!document.getElementById('fillup-date').value) {
+      document.getElementById('fillup-date').value = new Date().toISOString().split('T')[0];
+    }
+    onFillupVehicleChanged();
+  }
+  if (id === 'modal-trip') {
+    if (!document.getElementById('trip-date').value) {
+      document.getElementById('trip-date').value = new Date().toISOString().split('T')[0];
+    }
+  }
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+  // Reset errors
+  document.querySelectorAll('.form-error').forEach(e => e.classList.remove('visible'));
+}
+
+function openFillupForVehicle(vehId) {
+  openModal('modal-fillup');
+  document.getElementById('fillup-veh').value = vehId;
+  onFillupVehicleChanged();
+}
+
+function openTripForVehicle(vehId) {
+  openModal('modal-trip');
+  document.getElementById('trip-veh').value = vehId;
+}
+
+// On Vehicle selection change in Fill-up form
+function onFillupVehicleChanged() {
+  const vehId = document.getElementById('fillup-veh').value;
+  const prevOdoEl = document.getElementById('fillup-prev-odo-text');
+  const odoInput = document.getElementById('fillup-odo');
+
+  const fillups = AppState.fillups
+    .filter(f => f.vehicleId === vehId)
+    .sort((a, b) => a.odometer - b.odometer);
+
+  const veh = AppState.vehicles.find(v => v.id === vehId);
+  const lastOdo = fillups.length > 0 ? fillups[fillups.length - 1].odometer : (veh ? (veh.initialOdo || 0) : 0);
+
+  prevOdoEl.innerText = `Last recorded odometer: ${lastOdo.toLocaleString()} ${getDistUnit()}`;
+  calculateFillupPreview();
+}
+
+// Live calculation & validation in Fill-up modal
+function calculateFillupPreview() {
+  const vehId = document.getElementById('fillup-veh').value;
+  const odoVal = parseFloat(document.getElementById('fillup-odo').value);
+  const qtyVal = parseFloat(document.getElementById('fillup-qty').value);
+  const priceVal = parseFloat(document.getElementById('fillup-price').value);
+  const isFull = document.getElementById('fillup-fulltank').checked;
+
+  const odoErr = document.getElementById('fillup-err-odo');
+  const warningBanner = document.getElementById('fillup-warning-alert');
+
+  const fillups = AppState.fillups
+    .filter(f => f.vehicleId === vehId && f.id !== document.getElementById('fillup-id').value)
+    .sort((a, b) => a.odometer - b.odometer);
+
+  const veh = AppState.vehicles.find(v => v.id === vehId);
+  const lastOdo = fillups.length > 0 ? fillups[fillups.length - 1].odometer : (veh ? (veh.initialOdo || 0) : 0);
+
+  // Validation: Odometer must be > last odometer
+  if (!isNaN(odoVal) && odoVal <= lastOdo) {
+    odoErr.innerText = `Odometer must be greater than previous reading (${lastOdo.toLocaleString()} ${getDistUnit()})!`;
+    odoErr.classList.add('visible');
+  } else {
+    odoErr.classList.remove('visible');
+  }
+
+  // Cost calculation
+  if (!isNaN(qtyVal) && !isNaN(priceVal) && qtyVal > 0 && priceVal > 0) {
+    document.getElementById('calc-total-cost').innerText = formatCost(qtyVal * priceVal);
+  } else {
+    document.getElementById('calc-total-cost').innerText = formatCost(0);
+  }
+
+  // Distance & Mileage preview
+  if (!isNaN(odoVal) && odoVal > lastOdo) {
+    const dist = odoVal - lastOdo;
+    document.getElementById('calc-dist').innerText = formatDist(dist);
+
+    if (isFull && !isNaN(qtyVal) && qtyVal > 0) {
+      const calcEff = dist / qtyVal;
+      document.getElementById('calc-mileage').innerText = `${calcEff.toFixed(1)} ${getEfficiencyUnit()}`;
+
+      // Check drop vs vehicle avg
+      const stats = getVehicleStats(vehId);
+      if (stats.avgMileage > 0 && calcEff < (stats.avgMileage * 0.85)) {
+        warningBanner.style.display = 'block';
+      } else {
+        warningBanner.style.display = 'none';
+      }
+    } else {
+      document.getElementById('calc-mileage').innerText = isFull ? '--' : 'Partial Tank';
+      warningBanner.style.display = 'none';
+    }
+  } else {
+    document.getElementById('calc-dist').innerText = '0 ' + getDistUnit();
+    document.getElementById('calc-mileage').innerText = '--';
+    warningBanner.style.display = 'none';
+  }
+}
+
+// Save Vehicle
+function saveVehicle(e) {
+  e.preventDefault();
+  const id = document.getElementById('veh-id').value || ('veh-' + Date.now());
+  const name = document.getElementById('veh-name').value.trim();
+  const type = document.getElementById('veh-type').value;
+  const fuel = document.getElementById('veh-fuel').value;
+  const reg = document.getElementById('veh-reg').value.trim();
+  const color = document.getElementById('veh-color').value;
+  const initialOdo = parseFloat(document.getElementById('veh-initial-odo').value) || 0;
+
+  if (!name) {
+    document.getElementById('veh-err-name').classList.add('visible');
+    return;
+  }
+
+  const existingIdx = AppState.vehicles.findIndex(v => v.id === id);
+  const vehicleObj = { id, name, type, fuel, reg, color, initialOdo };
+
+  if (existingIdx >= 0) {
+    AppState.vehicles[existingIdx] = vehicleObj;
+    showToast(`Updated vehicle: ${name}`);
+  } else {
+    AppState.vehicles.push(vehicleObj);
+    showToast(`Added new vehicle: ${name}`);
+  }
+
+  saveState();
+  closeModal('modal-vehicle');
+  document.getElementById('form-vehicle').reset();
+  document.getElementById('veh-id').value = '';
+  renderDashboard();
+  renderVehicles();
+}
+
+function editVehicle(id) {
+  const veh = AppState.vehicles.find(v => v.id === id);
+  if (!veh) return;
+  document.getElementById('veh-id').value = veh.id;
+  document.getElementById('veh-name').value = veh.name;
+  document.getElementById('veh-type').value = veh.type;
+  document.getElementById('veh-fuel').value = veh.fuel;
+  document.getElementById('veh-reg').value = veh.reg || '';
+  document.getElementById('veh-color').value = veh.color || '#3B82F6';
+  document.getElementById('veh-initial-odo').value = veh.initialOdo || 0;
+  document.getElementById('vehicle-modal-title').innerText = 'Edit Vehicle';
+  openModal('modal-vehicle');
+}
+
+function deleteVehicle(id) {
+  const veh = AppState.vehicles.find(v => v.id === id);
+  if (!veh) return;
+  if (confirm(`Are you sure you want to delete ${veh.name}? All associated fill-ups and trip logs will also be deleted!`)) {
+    AppState.vehicles = AppState.vehicles.filter(v => v.id !== id);
+    AppState.fillups = AppState.fillups.filter(f => f.vehicleId !== id);
+    AppState.trips = AppState.trips.filter(t => t.vehicleId !== id);
+    saveState();
+    showToast(`Deleted ${veh.name}`);
+    renderDashboard();
+    renderVehicles();
+  }
+}
+
+// Save Fuel Fill-up
+function saveFillup(e) {
+  e.preventDefault();
+  const id = document.getElementById('fillup-id').value || ('f-' + Date.now());
+  const vehicleId = document.getElementById('fillup-veh').value;
+  const date = document.getElementById('fillup-date').value;
+  const odometer = parseFloat(document.getElementById('fillup-odo').value);
+  const quantity = parseFloat(document.getElementById('fillup-qty').value);
+  const price = parseFloat(document.getElementById('fillup-price').value);
+  const fullTank = document.getElementById('fillup-fulltank').checked;
+  const station = document.getElementById('fillup-station').value.trim();
+  const notes = document.getElementById('fillup-notes').value.trim();
+
+  // Validate odometer > last
+  const fillups = AppState.fillups
+    .filter(f => f.vehicleId === vehicleId && f.id !== id)
+    .sort((a, b) => a.odometer - b.odometer);
+  const veh = AppState.vehicles.find(v => v.id === vehicleId);
+  const lastOdo = fillups.length > 0 ? fillups[fillups.length - 1].odometer : (veh ? (veh.initialOdo || 0) : 0);
+
+  if (odometer <= lastOdo) {
+    document.getElementById('fillup-err-odo').classList.add('visible');
+    return;
+  }
+
+  const fillupObj = { id, vehicleId, date, odometer, quantity, price, fullTank, station, notes };
+  const existingIdx = AppState.fillups.findIndex(f => f.id === id);
+
+  if (existingIdx >= 0) {
+    AppState.fillups[existingIdx] = fillupObj;
+    showToast('Updated fuel fill-up log');
+  } else {
+    AppState.fillups.push(fillupObj);
+    showToast('Recorded new fuel fill-up');
+  }
+
+  saveState();
+  closeModal('modal-fillup');
+  document.getElementById('form-fillup').reset();
+  document.getElementById('fillup-id').value = '';
+  renderDashboard();
+  renderFillupTable();
+}
+
+function editFillup(id) {
+  const f = AppState.fillups.find(x => x.id === id);
+  if (!f) return;
+  document.getElementById('fillup-id').value = f.id;
+  document.getElementById('fillup-veh').value = f.vehicleId;
+  document.getElementById('fillup-date').value = f.date;
+  document.getElementById('fillup-odo').value = f.odometer;
+  document.getElementById('fillup-qty').value = f.quantity;
+  document.getElementById('fillup-price').value = f.price;
+  document.getElementById('fillup-fulltank').checked = f.fullTank !== false;
+  document.getElementById('fillup-station').value = f.station || '';
+  document.getElementById('fillup-notes').value = f.notes || '';
+  document.getElementById('fillup-modal-title').innerText = 'Edit Fill-up';
+  openModal('modal-fillup');
+  calculateFillupPreview();
+}
+
+function deleteFillup(id) {
+  if (confirm('Delete this fuel fill-up log?')) {
+    AppState.fillups = AppState.fillups.filter(f => f.id !== id);
+    saveState();
+    showToast('Deleted fill-up entry');
+    renderDashboard();
+    renderFillupTable();
+  }
+}
+
+// Save Trip
+function saveTrip(e) {
+  e.preventDefault();
+  const id = document.getElementById('trip-id').value || ('trip-' + Date.now());
+  const vehicleId = document.getElementById('trip-veh').value;
+  const date = document.getElementById('trip-date').value;
+  const start = document.getElementById('trip-start').value.trim();
+  const end = document.getElementById('trip-end').value.trim();
+  const distance = parseFloat(document.getElementById('trip-dist').value);
+  const purpose = document.getElementById('trip-purpose').value;
+  const notes = document.getElementById('trip-notes').value.trim();
+
+  if (isNaN(distance) || distance <= 0) {
+    alert('Please enter a valid trip distance.');
+    return;
+  }
+
+  const tripObj = { id, vehicleId, date, start, end, distance, purpose, notes };
+  const existingIdx = AppState.trips.findIndex(t => t.id === id);
+
+  if (existingIdx >= 0) {
+    AppState.trips[existingIdx] = tripObj;
+    showToast('Updated trip log');
+  } else {
+    AppState.trips.push(tripObj);
+    showToast('Recorded new trip');
+  }
+
+  saveState();
+  closeModal('modal-trip');
+  document.getElementById('form-trip').reset();
+  document.getElementById('trip-id').value = '';
+  renderTripTable();
+}
+
+function editTrip(id) {
+  const t = AppState.trips.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('trip-id').value = t.id;
+  document.getElementById('trip-veh').value = t.vehicleId;
+  document.getElementById('trip-date').value = t.date;
+  document.getElementById('trip-start').value = t.start || '';
+  document.getElementById('trip-end').value = t.end || '';
+  document.getElementById('trip-dist').value = t.distance;
+  document.getElementById('trip-purpose').value = t.purpose || 'Personal';
+  document.getElementById('trip-notes').value = t.notes || '';
+  document.getElementById('trip-modal-title').innerText = 'Edit Trip';
+  openModal('modal-trip');
+}
+
+function deleteTrip(id) {
+  if (confirm('Delete this trip record?')) {
+    AppState.trips = AppState.trips.filter(t => t.id !== id);
+    saveState();
+    showToast('Deleted trip record');
+    renderTripTable();
+  }
+}
+
+// Expense Reports & Filtering
+function generateReport() {
+  populateVehicleSelects();
+  const vehFilter = document.getElementById('rep-vehicle').value;
+  const period = document.getElementById('rep-period').value;
+  const category = document.getElementById('rep-category').value;
+
+  document.getElementById('print-date').innerText = `Generated on ${new Date().toLocaleDateString()} | Filter: ${vehFilter} | Period: ${period}`;
+
+  // Date filtering logic
+  const now = new Date();
+  let startDate = new Date(0); // All time
+
+  if (period === 'month') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else if (period === 'last-month') {
+    startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  } else if (period === '3months') {
+    startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+  } else if (period === '6months') {
+    startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+  } else if (period === 'year') {
+    startDate = new Date(now.getFullYear(), 0, 1);
+  }
+
+  let filteredFillups = AppState.fillups.filter(f => {
+    const fDate = new Date(f.date);
+    const matchVeh = vehFilter === 'all' || f.vehicleId === vehFilter;
+    const matchDate = fDate >= startDate;
+    return matchVeh && matchDate;
+  });
+
+  let filteredTrips = AppState.trips.filter(t => {
+    const tDate = new Date(t.date);
+    const matchVeh = vehFilter === 'all' || t.vehicleId === vehFilter;
+    const matchDate = tDate >= startDate;
+    return matchVeh && matchDate;
+  });
+
+  if (category === 'fuel') filteredTrips = [];
+  if (category === 'trips') filteredFillups = [];
+
+  // KPI Calculations
+  let totalCost = filteredFillups.reduce((sum, f) => sum + (f.quantity * f.price), 0);
+  let totalFuelDist = 0;
+  let efficiencies = [];
+
+  // Calculate distance from fillups
+  const vehIds = vehFilter === 'all' ? AppState.vehicles.map(v => v.id) : [vehFilter];
+  vehIds.forEach(vid => {
+    const fs = filteredFillups.filter(f => f.vehicleId === vid).sort((a, b) => a.odometer - b.odometer);
+    if (fs.length > 1) {
+      totalFuelDist += (fs[fs.length - 1].odometer - fs[0].odometer);
+      for (let i = 1; i < fs.length; i++) {
+        const dist = fs[i].odometer - fs[i - 1].odometer;
+        if (dist > 0 && fs[i].quantity > 0 && fs[i].fullTank && fs[i - 1].fullTank) {
+          efficiencies.push(dist / fs[i].quantity);
+        }
+      }
+    }
+  });
+
+  const tripDist = filteredTrips.reduce((sum, t) => sum + t.distance, 0);
+  const combinedDist = category === 'fuel' ? totalFuelDist : (category === 'trips' ? tripDist : (totalFuelDist + tripDist));
+
+  const avgEff = efficiencies.length > 0 ? (efficiencies.reduce((a, b) => a + b, 0) / efficiencies.length) : 0;
+  const costPerDist = combinedDist > 0 ? (totalCost / combinedDist) : 0;
+
+  document.getElementById('rep-stat-dist').innerText = formatDist(combinedDist);
+  document.getElementById('rep-stat-cost').innerText = formatCost(totalCost);
+  document.getElementById('rep-stat-mileage').innerText = avgEff > 0 ? avgEff.toFixed(1) + ' ' + getEfficiencyUnit() : '--';
+  document.getElementById('rep-stat-costkm').innerText = costPerDist > 0 ? formatCost(costPerDist) + '/' + getDistUnit() : '--';
+
+  // Monthly Breakdown Table
+  const monthlyMap = {};
+  filteredFillups.forEach(f => {
+    const key = f.date.substring(0, 7); // YYYY-MM
+    if (!monthlyMap[key]) monthlyMap[key] = { dist: 0, qty: 0, cost: 0, effs: [] };
+    monthlyMap[key].qty += f.quantity;
+    monthlyMap[key].cost += (f.quantity * f.price);
+  });
+
+  const monthTbody = document.getElementById('rep-monthly-table-body');
+  monthTbody.innerHTML = '';
+  const sortedMonths = Object.keys(monthlyMap).sort().reverse();
+
+  if (sortedMonths.length === 0) {
+    monthTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">No monthly data for selected period.</td></tr>`;
+  } else {
+    sortedMonths.forEach(m => {
+      const row = monthlyMap[m];
+      const costDist = row.dist > 0 ? formatCost(row.cost / row.dist) : '--';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${m}</strong></td>
+        <td>${formatDist(row.dist)}</td>
+        <td>${row.qty.toFixed(1)} ${getVolUnit()}</td>
+        <td><strong>${formatCost(row.cost)}</strong></td>
+        <td style="color: var(--success); font-weight: 600;">--</td>
+        <td>${costDist}</td>
+      `;
+      monthTbody.appendChild(tr);
+    });
+  }
+
+  // Detailed Log Items
+  const detailedTbody = document.getElementById('rep-detailed-table-body');
+  detailedTbody.innerHTML = '';
+
+  const combinedItems = [];
+  filteredFillups.forEach(f => {
+    const veh = AppState.vehicles.find(v => v.id === f.vehicleId);
+    combinedItems.push({
+      date: f.date,
+      type: '⛽ Fuel',
+      veh: veh ? veh.name : 'Unknown',
+      desc: `${f.quantity} ${getVolUnit()} @ ${getCurrency()}${f.price} (${f.station || 'Station'})`,
+      dist: `${f.odometer} ${getDistUnit()} (Odo)`,
+      cost: formatCost(f.quantity * f.price)
+    });
+  });
+
+  filteredTrips.forEach(t => {
+    const veh = AppState.vehicles.find(v => v.id === t.vehicleId);
+    combinedItems.push({
+      date: t.date,
+      type: '📍 Trip',
+      veh: veh ? veh.name : 'Unknown',
+      desc: `${t.start || 'Start'} → ${t.end || 'End'} (${t.purpose})`,
+      dist: formatDist(t.distance),
+      cost: '—'
+    });
+  });
+
+  combinedItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (combinedItems.length === 0) {
+    detailedTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">No entries match filters.</td></tr>`;
+  } else {
+    combinedItems.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item.date}</td>
+        <td>${item.type}</td>
+        <td>${item.veh}</td>
+        <td>${item.desc}</td>
+        <td>${item.dist}</td>
+        <td><strong>${item.cost}</strong></td>
+      `;
+      detailedTbody.appendChild(tr);
+    });
+  }
+}
+
+// Export CSV Functionality
+function exportReportCSV() {
+  const rows = [
+    ['Date', 'Type', 'Vehicle', 'Description', 'Distance', 'Cost']
+  ];
+
+  document.querySelectorAll('#rep-detailed-table-body tr').forEach(tr => {
+    const cols = Array.from(tr.querySelectorAll('td')).map(td => `"${td.innerText.replace(/"/g, '""')}"`);
+    if (cols.length === 6) rows.push(cols);
+  });
+
+  const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.join(',')).join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `mileage_report_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast('Report CSV exported successfully');
+}
+
+// Backup & Restore Functions
+function exportBackupJSON() {
+  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(AppState, null, 2));
+  const link = document.createElement('a');
+  link.setAttribute('href', dataStr);
+  link.setAttribute('download', `mileage_tracker_backup_${new Date().toISOString().split('T')[0]}.json`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast('Backup JSON downloaded');
+}
+
+function importBackupJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (parsed && Array.isArray(parsed.vehicles)) {
+        AppState = parsed;
+        saveState();
+        showToast('Backup data restored successfully!');
+        renderDashboard();
+        applyTheme();
+      } else {
+        alert('Invalid backup JSON format.');
+      }
+    } catch (err) {
+      alert('Error parsing JSON backup file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Clear Demo Data
+function clearDemoData() {
+  if (confirm('Clear demo vehicles and sample logs? Your custom vehicles will remain.')) {
+    AppState.vehicles = AppState.vehicles.filter(v => !v.id.startsWith('demo-'));
+    AppState.fillups = AppState.fillups.filter(f => !f.id.startsWith('f-v'));
+    AppState.trips = AppState.trips.filter(t => !t.id.startsWith('trip-'));
+    AppState.settings.isDemoLoaded = false;
+    saveState();
+    showToast('Demo data cleared');
+    renderDashboard();
+  }
+}
+
+// Clear All Data
+function confirmClearAll() {
+  if (confirm('⚠️ DANGER: This will permanently delete ALL vehicles, fill-ups, and trip records from localStorage. Proceed?')) {
+    AppState.vehicles = [];
+    AppState.fillups = [];
+    AppState.trips = [];
+    saveState();
+    showToast('All local storage data reset');
+    renderDashboard();
+  }
+}
+
+// Settings Handlers
+function renderSettings() {
+  document.getElementById('setting-currency').value = AppState.settings.currency || '₹';
+  document.getElementById('setting-distance').value = AppState.settings.distanceUnit || 'km';
+  document.getElementById('setting-theme').value = AppState.settings.theme || 'dark';
+}
+
+function updateSetting(key, val) {
+  AppState.settings[key] = val;
+  saveState();
+  if (key === 'theme') applyTheme();
+  showToast(`Updated ${key} setting`);
+  renderDashboard();
+}
+
+function toggleTheme() {
+  const cur = AppState.settings.theme || 'dark';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  updateSetting('theme', next);
+  applyTheme();
+}
+
+function applyTheme() {
+  const isLight = AppState.settings.theme === 'light';
+  if (isLight) {
+    document.body.classList.add('light-theme');
+    document.getElementById('theme-btn').innerText = '☀️ Light';
+  } else {
+    document.body.classList.remove('light-theme');
+    document.getElementById('theme-btn').innerText = '🌙 Dark';
+  }
+  renderDashboardCharts();
+}
+
+// Initialization on DOMContentLoaded
+window.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  applyTheme();
+  renderDashboard();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "Mileage Tracker",
+  "description": "Complete vehicle mileage, fuel fill-up, receipt scanner OCR, trip log, expense reports, and fleet management tracker with persistent local storage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
